@@ -1,36 +1,45 @@
 const express = require("express");
-const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+app.get("/characters", (req, res) => {
+  const dataPath = path.join(__dirname, "data");
 
-const characters = [
-  {
-    name: "Yoshimitsu",
-    origin: "Japan",
-    style: "Kenjutsu",
-    moves: ["Flea Stance", "Manji Dragonfly"]
-  },
-  {
-    name: "King",
-    origin: "Mexico",
-    style: "Pro Wrestling",
-    moves: ["Giant Swing", "Chain Throw"]
-  }
-];
+  fs.readdir(dataPath, (err, files) => {
+    if (err) {
+      return res.status(500).json({ error: "Failed to read data directory" });
+    }
 
-app.get("/api/characters", (req, res) => {
-  res.json(characters);
+    const characters = files
+      .filter((file) => file.endsWith(".json"))
+      .map((file) => path.basename(file, ".json"));
+
+    res.json({ characters });
+  });
 });
 
-app.get("/api/characters/:name", (req, res) => {
-  const name = req.params.name.toLowerCase();
-  const found = characters.find(c => c.name.toLowerCase() === name);
-  if (!found) return res.status(404).json({ error: "Character not found" });
-  res.json(found);
+app.get("/characters/:name", (req, res) => {
+  const name = req.params.name;
+  const filePath = path.join(__dirname, "data", `${name}.json`);
+
+  fs.readFile(filePath, "utf-8", (err, data) => {
+    if (err) {
+      return res.status(404).json({ error: "Character not found" });
+    }
+
+    try {
+      const json = JSON.parse(data);
+      res.json(json);
+    } catch (parseErr) {
+      res.status(500).json({ error: "Error parsing JSON" });
+    }
+  });
 });
 
+// Server Local
 app.listen(PORT, () => {
-  console.log("API running at http://localhost:" + PORT);
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
